@@ -1,5 +1,6 @@
 This is a janky python script, and your experience may vary.
 
+
 -Installation
 This script requires NXBT to be installed as that powers basically all of it, so please visit https://github.com/Brikwerk/nxbt for more info.
 NXBT requires root access to the bluetooth controller, so make sure it can get that.
@@ -13,6 +14,7 @@ If, like me, you are streaming your footage to the host device via RTSP, simply 
 -Direct Connection To Capture Card
 
 If you have a Capture Card that your device is able to ready locally, you can skip all of the stream stuff and change it to the device's internal address. You will have to rewrite a few bits to get it to work, and no I don't have that set up as mine wouldn't detect. I told you this was janky.
+
 
 -How To Use The Bot
 
@@ -31,3 +33,16 @@ The controller should now connect, and load the game up.
 Type in your game (FRLG, RSE etc), method (re, sr etc), target, and if you want to block any directions so you don't accidentally run out of the grass.
 
 Let it run and pray that the shinies turn up.
+
+
+-Create your own sequences
+
+Open the sequences.csv, and type out on a new line, following the expected pattern. The game and method can be called anything.
+
+Button inputs: a,b,x,y,up,down,left,right,l,r,zl,zr,plus,minus,home,capture.
+
+Loop control: loop, end. Use as loop left right end to walk left and right repeatedly.
+
+Events: encounter, check, battle. Encounter scans for a black screen, check times the battle length for a shiny, battle scans if the battle menu has loaded.
+
+Floats: 0.5 for example adds a 0.5 second delay.
