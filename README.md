@@ -43,6 +43,6 @@ Button inputs: a,b,x,y,up,down,left,right,l,r,zl,zr,plus,minus,home,capture.
 
 Loop control: loop, end. Use as loop left right end to walk left and right repeatedly.
 
-Events: encounter, check, battle. Encounter scans for a black screen, check times the battle length for a shiny, battle scans if the battle menu has loaded.
+Events: encounter, check, battle, summary. Encounter scans for a black screen, check times the battle length for a shiny, battle scans if the battle menu has loaded, summarry looks at the Pokemon summary screen for the shiny star indicator.
 
 Floats: 0.5 for example adds a 0.5 second delay.
