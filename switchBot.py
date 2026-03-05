@@ -506,6 +506,14 @@ def CheckEncounter():
 	#Check shiny pokemon
 	return shiny
 
+def CheckSummary():
+	image = CaptureFrame()
+	crop = CropFrame(image, 0.435, 0.47, 0.215, 0.275)
+	process = ThresholdProcessing(crop, 240)
+	SaveFrame("star_threshold", process)
+	shiny = not ThresholdDetection(process, 0.8)
+	return shiny
+
 """Main hunt"""
 def HuntShiny(sequence):
 	global controller_idx
@@ -586,6 +594,14 @@ def HuntShiny(sequence):
 					print("Shiny not found")
 				else:
 					break
+
+			elif (seq[i] == "summary"):
+				foundShiny = CheckSummary()
+				if (not foundShiny):
+					print("Shiny not found")
+				else:
+					break
+					
 			else:
 				SequenceEvent(seq[i])
 			i += 1
