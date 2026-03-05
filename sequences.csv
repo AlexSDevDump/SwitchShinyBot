@@ -1,6 +1,7 @@
 game,method,sequence
 frlg,re,loop left encounter right encounter up encounter down encounter end check 0.2 a 0.1 a 3.2 down right down right a a 0.5 a 4
-frlg,starter, reset a 1.5 a 1.5 a 2 a 5 down 0.1 a 2 a 2 a 2 x 0.2 a 2 a 0.5 a 2.5 summary
+frlg,starter, reset a 1.5 a 1.5 a 2 a 5 down 0.1 a 2 a 2.5 a 2.5 x 0.2 a 1.7 a 0.5 a 2.5 summary
 rse,re,up encounter loop left encounter right encounter end check 1 a battle down right down a 1 a 2.8 
 dppt,re,up encounter loop left encounter right encounter end check 12 down down right right right left a 7
+
 
