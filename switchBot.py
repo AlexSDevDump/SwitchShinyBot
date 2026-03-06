@@ -436,6 +436,9 @@ def SequenceEvent(event):
 	if (event == "encounter"):
 		return IsInEncounter()
 
+	if (event == "reset"):
+		ResetPosition()
+
 	return False
 
 """Basic macros for stuff"""
