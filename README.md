@@ -2,7 +2,8 @@ This is a janky python script, and your experience may vary.
 
 
 -Installation
-This script requires NXBT to be installed as that powers basically all of it, so please visit https://github.com/Brikwerk/nxbt for more info.
+
+If you are using the wireless script, it requires NXBT to be installed as that powers basically all of it, so please visit https://github.com/Brikwerk/nxbt for more info.
 NXBT requires root access to the bluetooth controller, so make sure it can get that.
 I would recommend running this on a Pi 4 or higher device, as you may encounter some memory and processing issues when handling frames, depending on the video feed settings.
 
