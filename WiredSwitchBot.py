@@ -5,16 +5,13 @@ import random
 from SwitchController import SwitchController
 import cv2
 import datetime
-import subprocess
 import csv
 import numpy as np
-import shlex
 import threading
-import collections
-import shutil
 import sys
 import os
 import signal
+import re
 
 """GLOBALS"""
 QUITTING = False
@@ -23,12 +20,20 @@ QUITTING = False
 ctrl = None
 
 #Stream Settings
-RTSP_URL = "rtsp://192.168.101.2:554/live" #CHANGE THIS
+RTSP_URL = "rtsp://192.168.101.2:554/live" #Set RTSP address here
+CAPTURE_CARD = "/dev/video0" #Set device address here
+CAPTURE_WIDTH  = 1280
+CAPTURE_HEIGHT = 720
+CAPTURE_FPS    = 10
+
+STREAM_PATH = CAPTURE_CARD #Set to RTSP_URL or CAPTURE_CARD
+
+
 
 #Frame Reader
 FRAME_WIDTH = 640
 FRAME_HEIGHT = 360
-PREVIEW_FPS = 12
+PREVIEW_FPS = 10
 latest_frame	= None
 _process	= None
 _reader_thread	= None
@@ -42,6 +47,40 @@ OUTPUT_DIR = "screenshots"
 ROLLING_FILE = os.path.join(OUTPUT_DIR, "shinyFound%01d.ts")
 
 os.makedirs(OUTPUT_DIR, exist_ok=True)
+
+"""Source Detection"""
+def _detect_source(source: str) -> str:
+	if re.match(r"^/dev/video\d+$", source):
+		return "local"
+	if re.match(r"^rtsp://", source, re.IGNORECASE):
+		return "rtsp"
+	raise ValueError(f"Unrecognised source format: {source!r}")
+
+def _build_input_args() -> list[str]:
+	kind = _detect_source(STREAM_PATH)
+	if kind == "rtsp":
+		return [
+			"-rtsp_transport", "tcp",
+			"-fflags", "nobuffer+discardcorrupt",
+			"-flags", "low_delay",
+			"-reorder_queue_size", "0",
+			"-buffer_size", "1024000",
+			"-i", STREAM_PATH,
+		]
+	else:
+		return [
+			"-f", "v4l2",
+			"-input_format", "yuyv422",
+			"-video_size", f"{CAPTURE_WIDTH}x{CAPTURE_HEIGHT}",
+			"-framerate", str(CAPTURE_FPS),
+			"-i", STREAM_PATH,
+		]
+
+def _build_rolling_buffer_args() -> list[str]:
+	if _detect_source(STREAM_PATH) == "rtsp":
+		return ["-map", "0:v", "-c:v", "copy", "-an"]
+	else:
+		return ["-map", "0:v", "-c:v", "libx264", "-preset", "ultrafast", "-an"]
 
 """Frame Reader Stuff"""
 def _read_exactly(pipe, n):
@@ -79,25 +118,17 @@ def StartCapture():
 	with _start_lock:
 		if _process and _process.poll() is None:
 			return  # Already running
-
+ 
 		command = [
 			"ffmpeg",
-			"-rtsp_transport", "tcp",
-			"-fflags", "nobuffer+discardcorrupt",
-			"-flags", "low_delay",
-			"-reorder_queue_size", "0",
-			"-buffer_size", "1024000",
-			"-i", RTSP_URL,
-			# Rolling buffer — direct stream copy, no filter
-			"-map", "0:v",
-			"-c:v", "copy",
-			"-an",
+			*_build_input_args(),
+			*_build_rolling_buffer_args(),
 			"-f", "segment",
 			"-segment_time", "4",
 			"-segment_wrap", "6",
 			"-reset_timestamps", "1",
+			"-segment_format", "mpegts",
 			"-y", ROLLING_FILE,
-			# Preview — scaled + fps limited, raw pipe
 			"-map", "0:v",
 			"-vf", f"scale={FRAME_WIDTH}:{FRAME_HEIGHT},fps={PREVIEW_FPS}",
 			"-c:v", "rawvideo",
@@ -106,7 +137,7 @@ def StartCapture():
 			"-f", "rawvideo",
 			"pipe:1",
 		]
-
+ 
 		_log_file = open("ffmpeg.log", "w")
 		_process = subprocess.Popen(
 			command,
@@ -115,7 +146,7 @@ def StartCapture():
 			stdin=subprocess.DEVNULL,
 			bufsize=0,
 		)
-
+ 
 		_reader_running = True
 		_reader_thread = threading.Thread(target=_frame_reader, args=(_process,), daemon=True)
 		_reader_thread.start()
@@ -211,7 +242,6 @@ def SaveHighlight():
 		"-safe", "0",
 		"-i", CONCAT_PATH,
 		"-c", "copy",
-		"-bsf:a", "aac_adtstoasc",
 		path
 	])
 
@@ -224,22 +254,22 @@ def CreateController():
 	control = SwitchController(port = '/dev/ttyS0')
 	return control
 
-def PressButtons(inputs, delay=0.1):
+def PressButtons(inputs, delay=0.1, length=0.2):
 	global ctrl
 	delay = max(float(delay), 0.1)
 
 	if isinstance(inputs, str):
 		inputs = [inputs]
-	ctrl.Tap(inputs)
+	ctrl.Tap(inputs, hold=length)
 	time.sleep(delay)
 
 def DisconnectController():
-        global ctrl
-        ctrl.Disconnect()
+	global ctrl
+	ctrl.Disconnect()
 
 def ReconnectController():
-        global ctrl
-        ctrl.Reconnect()
+	global ctrl
+	ctrl.Reconnect()
 
 """Nice Closing"""
 def QuitProgram():
@@ -358,18 +388,21 @@ def SequenceEvent(event):
 	if (IsButton(event)):
 		PressButtons([event], 0.1)
 
-	if (IsFloat(event)):
+	elif (IsFloat(event)):
 		time.sleep(float(event))
 
-	if (event == "encounter"):
+	elif (event == "encounter"):
 		return IsInEncounter()
 
-	if (event == "battle"):
-                image = CaptureFrame()
-                return IsBattleLoaded(image)
+	elif (event == "battle"):
+		image = CaptureFrame()
+		return IsBattleLoaded(image)
 
-	if (event == "reset"):
+	elif (event == "reset"):
 		ResetPosition()
+
+	elif (event == "image"):
+		SaveFrame("stats", stamp=True)
 
 	return False
 
@@ -381,19 +414,24 @@ def StartGame():
 	SaveFrame("game_loading")
 	time.sleep(1.5)
 
+def ResetSeed():
+	presses = random.randint(0, 12)
+	buttons = ["up","down","left","right"]
+	for i in range(presses):
+		dir = random.randint(0,3)
+		delay = round(random.uniform(0.1, 0.2), 3)
+		PressButtons(buttons[dir], delay, length = round(random.uniform(0.15, 0.35), 3))
+
 def ResetPosition():
 	print("Soft Reset")
 	PressButtons(["a","b","x","y"], 3.8)
-	rand = round(random.uniform(0, 0.2), 3)
-	time.sleep(rand)
-	PressButtons("a", 1.1)
-	PressButtons("a", 1.1)
-	time.sleep(rand)
-	PressButtons("a", 2.7)
-	PressButtons("a", 1.3)
-	time.sleep(rand)
-	PressButtons("b", 1.9)
-	time.sleep(rand)
+	PressButtons("a", 1 + round(random.uniform(0, 0.3), 3), length = round(random.uniform(0.15, 0.35), 3))
+	PressButtons("a", 1 + round(random.uniform(0, 0.3), 3), length = round(random.uniform(0.15, 0.35), 3))
+	ResetSeed()
+	PressButtons("a", 2.7 + round(random.uniform(0, 0.4), 3), length = round(random.uniform(0.15, 0.35), 3))
+	PressButtons("a", 1.3 + round(random.uniform(0, 0.4), 3))
+	PressButtons("b", 1.9 + round(random.uniform(0, 0.4), 3))
+	time.sleep(0.5 + round(random.uniform(0, 2), 3))
 
 def SaveGame():
 	PressButtons("x", 1)
@@ -470,6 +508,7 @@ def HuntShiny(sequence):
 			if (sequence.save == True):
 				SaveGame();
 		i = 0
+		startTime = time.time()
 		while i < len(seq):
 			if (seq[i] == "loop"):
 				endIndex = -1
@@ -542,9 +581,11 @@ def HuntShiny(sequence):
 		if (foundShiny == True):
 			break
 		encounterCount += 1
-		print(encounterCount, " encounters")
+		endTime = time.time()
+		encounterTime = round(endTime - startTime, 4)
+		print("Encounter count:", encounterCount, ", Encounter time:", encounterTime, "seconds")
 
-	print("SHINY FOUND AFTER ", encounterCount, " ENCOUNTERS")
+	print("SHINY FOUND AFTER", encounterCount, "ENCOUNTERS")
 	SaveFrame("Shiny " + sequence.target, stamp = True)
 
 	#Disconnect Controller to allow player to catch
@@ -565,20 +606,20 @@ def main():
 	time.sleep(1)
 	PressButtons("a", 1)
 	PressButtons("b", 1)
-
+ 
 	StartCapture()
 	threading.Thread(target=Watchdog, daemon=True).start()
-
+ 
 	if not WaitForFirstFrame(timeout=10):
 		print("Stream failed, check ffmpeg.log")
 		QuitProgram()
 	else:
-		print("Frame stream ready.")
-
+		print("Stream ready:", _detect_source(STREAM_PATH), "->", STREAM_PATH)
+ 
 	while True:
 		time.sleep(0.01)
 		sequence = SelectHunt()
 		HuntShiny(sequence)
-
+		
 if __name__ == "__main__":
 	main()
