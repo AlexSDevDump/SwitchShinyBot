@@ -14,7 +14,7 @@ If, like me, you are streaming your footage to the host device via RTSP, simply 
 
 -Direct Connection To Capture Card
 
-If you have a Capture Card that your device is able to ready locally, you can skip all of the stream stuff and change it to the device's internal address. You will have to rewrite a few bits to get it to work, and no I don't have that set up as mine wouldn't detect. I told you this was janky.
+If you have a Capture Card that your device is able to ready locally, you can skip all of the stream stuff and change it to the device's internal address.
 
 
 -How To Use The Bot
