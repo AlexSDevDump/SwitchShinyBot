@@ -1,3 +1,7 @@
+-Video Guide
+
+https://youtu.be/ollgCfyOFAM
+
 This is a janky python script, and your experience may vary.
 
 
