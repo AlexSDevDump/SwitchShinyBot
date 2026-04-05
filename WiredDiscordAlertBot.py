@@ -13,6 +13,35 @@ import os
 import signal
 import re
 
+# NOTE TO NEW USERS: Use this link to make a Discord Webhook:
+#		https://support.discordapp.com/hc/en-us/articles/228383668-Intro-to-Webhooks
+# Then go to line 26 and copy-paste your link into the quotes.
+
+# web library
+import http.client
+ 
+def send( message ):
+ 
+    # your webhook URL
+    webhookurl = "https://discordapp.com/api/webhooks/YOURWEBHOOK"
+ 
+    # compile the form data (BOUNDARY can be anything)
+    formdata = "------:::BOUNDARY:::\r\nContent-Disposition: form-data; name=\"content\"\r\n\r\n" + message + "\r\n------:::BOUNDARY:::--"
+ 
+    # get the connection and make the request
+    connection = http.client.HTTPSConnection("discordapp.com")
+    connection.request("POST", webhookurl, formdata, {
+        'content-type': "multipart/form-data; boundary=----:::BOUNDARY:::",
+        'cache-control': "no-cache",
+        })
+ 
+    # get the response
+    response = connection.getresponse()
+    result = response.read()
+ 
+    # return back to the calling function with the result
+    return result.decode("utf-8")
+
 """GLOBALS"""
 QUITTING = False
 
@@ -586,6 +615,7 @@ def HuntShiny(sequence):
 		print("Encounter count:", encounterCount, ", Encounter time:", encounterTime, "seconds")
 
 	print("SHINY FOUND AFTER", encounterCount, "ENCOUNTERS")
+	print( send("A Shiny Appeared!!!") )
 	SaveFrame("Shiny " + sequence.target, stamp = True)
 
 	#Disconnect Controller to allow player to catch
@@ -618,6 +648,7 @@ def main():
  
 	while True:
 		time.sleep(0.01)
+		print( send("Let's Shiny Hunt!") )
 		sequence = SelectHunt()
 		HuntShiny(sequence)
 		
