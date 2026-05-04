@@ -490,7 +490,7 @@ def CheckSummary():
 	SaveFrame("star_summary", image)
 	crop = CropFrame(image, 0.435, 0.47, 0.215, 0.275)
 	SaveFrame("star_crop", crop)
-	process = ThresholdProcessing(crop, 240)
+	process = ThresholdProcessing(crop, 235)
 	SaveFrame("star_threshold", process)
 	shiny = not ThresholdDetection(process, 0.8)
 	return shiny
