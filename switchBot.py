@@ -2,7 +2,7 @@
 import subprocess
 import time
 import random
-import nxbt
+import nuxbt as nxbt
 from nxbt import Buttons, Sticks
 import cv2
 import datetime
@@ -44,7 +44,7 @@ nx = nxbt.Nxbt()
 controller_idx = None
 
 #Stream Settings
-RTSP_URL = "RTSP STREAM ADDRESS" #CHANGE THIS
+RTSP_URL = 10.0.0.215 
 
 #Frame Reader
 FRAME_WIDTH = 640
